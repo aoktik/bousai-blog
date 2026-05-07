@@ -1,8 +1,20 @@
 """楽天市場 商品検索APIモジュール"""
 import os
 import requests
+from urllib.parse import quote
 
 RAKUTEN_API = 'https://app.rakuten.co.jp/services/api/IchibaItem/Search/20170706'
+
+
+def _affiliate_url(item_url: str) -> str:
+    """楽天アフィリエイトURLを手動構築"""
+    aff_id = os.environ.get('RAKUTEN_AFFILIATE_ID', '')
+    if not aff_id or not item_url:
+        return item_url
+    return (
+        f"https://hb.afl.rakuten.co.jp/hgc/{aff_id}/"
+        f"?pc={quote(item_url, safe='')}&link_type=text&ut={aff_id}"
+    )
 
 
 def search(keyword: str, hits: int = 6) -> list:
@@ -10,12 +22,10 @@ def search(keyword: str, hits: int = 6) -> list:
     try:
         resp = requests.get(RAKUTEN_API, params={
             'applicationId': os.environ['RAKUTEN_APP_ID'],
-            'affiliateId':   os.environ['RAKUTEN_AFFILIATE_ID'],
             'keyword':       keyword,
             'hits':          hits,
             'sort':          '-reviewCount',
             'formatVersion': 2,
-            'imageFlag':     1,
         }, timeout=30)
         resp.raise_for_status()
         items = resp.json().get('Items', [])
@@ -25,12 +35,12 @@ def search(keyword: str, hits: int = 6) -> list:
 
     result = []
     for item in items:
-        imgs = item.get('mediumImageUrls', [])
+        imgs    = item.get('mediumImageUrls', [])
         img_url = imgs[0]['imageUrl'].replace('?_ex=128x128', '?_ex=400x400') if imgs else ''
         result.append({
             'name':    item.get('itemName', '')[:80],
             'price':   item.get('itemPrice', 0),
-            'url':     item.get('affiliateUrl') or item.get('itemUrl', ''),
+            'url':     _affiliate_url(item.get('itemUrl', '')),
             'image':   img_url,
             'shop':    item.get('shopName', ''),
             'reviews': item.get('reviewCount', 0),
