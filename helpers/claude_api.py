@@ -1,6 +1,7 @@
 """記事生成モジュール（Google Gemini API / REST）"""
 import os
 import re
+import time
 import requests
 from helpers.rakuten import affiliate_search_url
 
@@ -8,19 +9,27 @@ GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0
 
 
 def _call_gemini(prompt: str) -> str:
-    """Gemini REST APIを呼び出してテキストを返す"""
+    """Gemini REST APIを呼び出す（429時は最大3回リトライ）"""
     api_key = os.environ['GEMINI_API_KEY']
-    resp = requests.post(
-        GEMINI_URL,
-        params={'key': api_key},
-        json={
-            'contents': [{'parts': [{'text': prompt}]}],
-            'generationConfig': {'maxOutputTokens': 4096, 'temperature': 0.7},
-        },
-        timeout=120,
-    )
+    for attempt in range(3):
+        resp = requests.post(
+            GEMINI_URL,
+            params={'key': api_key},
+            json={
+                'contents': [{'parts': [{'text': prompt}]}],
+                'generationConfig': {'maxOutputTokens': 4096, 'temperature': 0.7},
+            },
+            timeout=120,
+        )
+        if resp.status_code == 429:
+            wait = 60 * (attempt + 1)
+            print(f'レート制限（429）: {wait}秒待機中...')
+            time.sleep(wait)
+            continue
+        resp.raise_for_status()
+        return resp.json()['candidates'][0]['content']['parts'][0]['text']
     resp.raise_for_status()
-    return resp.json()['candidates'][0]['content']['parts'][0]['text']
+    return ''
 
 # 30日分のトピックローテーション
 TOPICS = [
