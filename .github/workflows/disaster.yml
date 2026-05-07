@@ -34,7 +34,7 @@ jobs:
         env:
           RAKUTEN_APP_ID:       ${{ secrets.RAKUTEN_APP_ID }}
           RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
-          CLAUDE_API_KEY:       ${{ secrets.CLAUDE_API_KEY }}
+          GEMINI_API_KEY:       ${{ secrets.GEMINI_API_KEY }}
           WP_URL:               ${{ secrets.WP_URL }}
           WP_USER:              ${{ secrets.WP_USER }}
           WP_PASSWORD:          ${{ secrets.WP_PASSWORD }}
