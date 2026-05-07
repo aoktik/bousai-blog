@@ -1,10 +1,10 @@
-"""Claude API 記事生成モジュール"""
+"""記事生成モジュール（Google Gemini API使用）"""
 import os
 import re
-import anthropic
+import google.generativeai as genai
 from helpers.rakuten import affiliate_search_url
 
-MODEL = 'claude-opus-4-6'
+MODEL = 'gemini-1.5-flash'
 
 # 30日分のトピックローテーション
 TOPICS = [
@@ -56,8 +56,9 @@ def _parse(text: str) -> dict:
 
 
 def generate_daily(topic: dict, _products=None) -> dict:
-    """日次のアフィリエイト記事を生成（Claude自身の知識で商品推薦）"""
-    client = anthropic.Anthropic(api_key=os.environ['CLAUDE_API_KEY'])
+    """日次のアフィリエイト記事を生成（Geminiの知識で商品推薦）"""
+    genai.configure(api_key=os.environ['GEMINI_API_KEY'])
+    model = genai.GenerativeModel(MODEL)
 
     # 楽天検索アフィリエイトリンクを生成
     links = {kw: affiliate_search_url(kw) for kw in topic['search_kws']}
@@ -129,17 +130,14 @@ def generate_daily(topic: dict, _products=None) -> dict:
 - 商品カードのリンクには必ず上記の楽天アフィリエイトリンクを使用する
 """
 
-    msg = client.messages.create(
-        model=MODEL,
-        max_tokens=4096,
-        messages=[{'role': 'user', 'content': prompt}],
-    )
-    return _parse(msg.content[0].text)
+    response = model.generate_content(prompt)
+    return _parse(response.text)
 
 
 def generate_disaster(info: dict, _products=None) -> dict:
     """災害発生時の緊急記事を生成"""
-    client = anthropic.Anthropic(api_key=os.environ['CLAUDE_API_KEY'])
+    genai.configure(api_key=os.environ['GEMINI_API_KEY'])
+    model = genai.GenerativeModel(MODEL)
 
     if info['type'] == 'earthquake':
         situation = f"""
@@ -202,9 +200,5 @@ def generate_disaster(info: dict, _products=None) -> dict:
 - 最初の要素は必ず<h1>から始める
 """
 
-    msg = client.messages.create(
-        model=MODEL,
-        max_tokens=4096,
-        messages=[{'role': 'user', 'content': prompt}],
-    )
-    return _parse(msg.content[0].text)
+    response = model.generate_content(prompt)
+    return _parse(response.text)
