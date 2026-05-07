@@ -1,10 +1,26 @@
-"""記事生成モジュール（Google Gemini API使用）"""
+"""記事生成モジュール（Google Gemini API / REST）"""
 import os
 import re
-import google.generativeai as genai
+import requests
 from helpers.rakuten import affiliate_search_url
 
-MODEL = 'gemini-1.5-flash'
+GEMINI_URL = 'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent'
+
+
+def _call_gemini(prompt: str) -> str:
+    """Gemini REST APIを呼び出してテキストを返す"""
+    api_key = os.environ['GEMINI_API_KEY']
+    resp = requests.post(
+        GEMINI_URL,
+        params={'key': api_key},
+        json={
+            'contents': [{'parts': [{'text': prompt}]}],
+            'generationConfig': {'maxOutputTokens': 4096, 'temperature': 0.7},
+        },
+        timeout=120,
+    )
+    resp.raise_for_status()
+    return resp.json()['candidates'][0]['content']['parts'][0]['text']
 
 # 30日分のトピックローテーション
 TOPICS = [
@@ -57,8 +73,6 @@ def _parse(text: str) -> dict:
 
 def generate_daily(topic: dict, _products=None) -> dict:
     """日次のアフィリエイト記事を生成（Geminiの知識で商品推薦）"""
-    genai.configure(api_key=os.environ['GEMINI_API_KEY'])
-    model = genai.GenerativeModel(MODEL)
 
     # 楽天検索アフィリエイトリンクを生成
     links = {kw: affiliate_search_url(kw) for kw in topic['search_kws']}
@@ -130,14 +144,11 @@ def generate_daily(topic: dict, _products=None) -> dict:
 - 商品カードのリンクには必ず上記の楽天アフィリエイトリンクを使用する
 """
 
-    response = model.generate_content(prompt)
-    return _parse(response.text)
+    return _parse(_call_gemini(prompt))
 
 
 def generate_disaster(info: dict, _products=None) -> dict:
     """災害発生時の緊急記事を生成"""
-    genai.configure(api_key=os.environ['GEMINI_API_KEY'])
-    model = genai.GenerativeModel(MODEL)
 
     if info['type'] == 'earthquake':
         situation = f"""
@@ -200,5 +211,4 @@ def generate_disaster(info: dict, _products=None) -> dict:
 - 最初の要素は必ず<h1>から始める
 """
 
-    response = model.generate_content(prompt)
-    return _parse(response.text)
+    return _parse(_call_gemini(prompt))
