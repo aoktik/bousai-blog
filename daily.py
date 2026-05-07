@@ -3,7 +3,6 @@ import json
 import sys
 from pathlib import Path
 
-import helpers.rakuten as rakuten
 import helpers.wordpress as wordpress
 import helpers.claude_api as claude_api
 
@@ -24,26 +23,13 @@ def save_state(state: dict):
 def main():
     state = load_state()
 
-    # トピックをローテーションで選択
     idx   = state.get('topic_index', 0) % len(claude_api.TOPICS)
     topic = claude_api.TOPICS[idx]
     print(f'今日のトピック: {topic["keyword"]} (index={idx})')
 
-    # 楽天市場で商品を検索
-    products = rakuten.search(topic['search'])
-    if not products:
-        products = rakuten.search(topic['keyword'] + ' 防災')
-    print(f'楽天商品取得: {len(products)}件')
-
-    if not products:
-        print('商品が取得できませんでした。スキップします。')
-        sys.exit(1)
-
-    # Claude で記事を生成
-    article = claude_api.generate_daily(topic, products)
+    article = claude_api.generate_daily(topic)
     print(f'記事生成完了: {article["title"]}')
 
-    # WordPress に投稿
     url = wordpress.post(
         title    = article['title'],
         content  = article['content'],
@@ -52,7 +38,6 @@ def main():
     )
     print(f'投稿完了: {url}')
 
-    # 次のトピックに進める
     state['topic_index'] = idx + 1
     save_state(state)
     print('完了')
