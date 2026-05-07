@@ -1,9 +1,9 @@
-name: 毎日の記事生成
+name: 毎日の記事生成（下書き）
 
 on:
   schedule:
-    - cron: '0 1 * * *'   # 毎日 午前10時（JST = UTC+9）
-  workflow_dispatch:        # 管理画面から手動実行も可能
+    - cron: '0 22 * * *'   # JST 7:00（UTC 22:00 前日）
+  workflow_dispatch:
 
 concurrency:
   group: daily-article
@@ -15,33 +15,37 @@ permissions:
 jobs:
   post-article:
     runs-on: ubuntu-latest
-
     steps:
-      - name: リポジトリを取得
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Python 3.11 をセットアップ
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
 
-      - name: 必要なライブラリをインストール
-        run: pip install -r requirements.txt
+      - name: 依存関係をインストール
+        run: |
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          else
+            pip install requests pillow
+          fi
 
-      - name: 記事を生成してWordPressに投稿
+      - name: 下書き記事を生成して投稿
         env:
-          RAKUTEN_APP_ID:      ${{ secrets.RAKUTEN_APP_ID }}
+          WP_URL:               ${{ secrets.WP_URL }}
+          WP_USER:              ${{ secrets.WP_USER }}
+          WP_PASSWORD:          ${{ secrets.WP_PASSWORD }}
+          GEMINI_API_KEY:       ${{ secrets.GEMINI_API_KEY }}
           RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
-          GEMINI_API_KEY:      ${{ secrets.GEMINI_API_KEY }}
-          WP_URL:              ${{ secrets.WP_URL }}
-          WP_USER:             ${{ secrets.WP_USER }}
-          WP_PASSWORD:         ${{ secrets.WP_PASSWORD }}
-        run: python daily.py
+          A8_PRIME_VIDEO_LINK:  ${{ secrets.A8_PRIME_VIDEO_LINK }}
+          A8_PRIME_VIDEO_IMG:   ${{ secrets.A8_PRIME_VIDEO_IMG }}
+        run: python daily_enhanced.py --no-research
 
-      - name: 状態ファイルをリポジトリに保存
+      - name: 状態ファイルをコミット
         run: |
           git config user.name  "Bousai Bot"
           git config user.email "bot@aoktik.online"
-          git add data/state.json
-          git diff --staged --quiet || git commit -m "chore: update topic index [skip ci]"
-          git push
+          git add data/state.json data/state_enhanced.json 2>/dev/null || true
+          git diff --staged --quiet || git commit -m "chore: update state [skip ci]"
+          git push || true

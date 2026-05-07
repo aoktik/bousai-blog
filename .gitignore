@@ -2,3 +2,17 @@ __pycache__/
 *.pyc
 .env
 *.log
+
+# 生成画像
+data/eyecatch/
+data/ogp_images/
+
+# プラグインバイナリ
+*.zip
+affi-tag-api/
+affi-tag-api.php
+
+# データ系
+data/affi_blocks.json
+data/prime_video_works.json
+
