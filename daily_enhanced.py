@@ -121,25 +121,18 @@ def generate_related_articles_section(current_article_title: str, existing_artic
     ]
 
     for article in related:
-        card_html = f'''<!-- wp:column -->
-<div class="wp-block-column">
-  <!-- wp:group {"backgroundColor":"light_bg","padding":{{\"top":"20px","right":"20px","bottom":"20px","left":"20px"}}} -->
-  <div class="wp-block-group" style="background-color:#f8fafc;padding:20px;">
-    <!-- wp:heading {{"level":4}} -->
-    <h4>{article.get('title', 'タイトル')}</h4>
-    <!-- /wp:heading -->
-
-    <!-- wp:paragraph -->
-    <p>
-      <a href="{article.get('url', '#')}" style="color:#e94560;text-decoration:none;font-weight:bold;">
-        詳しく読む →
-      </a>
-    </p>
-    <!-- /wp:paragraph -->
-  </div>
-  <!-- /wp:group -->
-</div>
-<!-- /wp:column -->'''
+        title = article.get('title', 'タイトル')
+        url_ = article.get('url', '#')
+        card_html = (
+            '<!-- wp:column -->\n'
+            '<div class="wp-block-column">\n'
+            '  <div class="wp-block-group" style="background-color:#f8fafc;padding:20px;">\n'
+            f'    <h4>{title}</h4>\n'
+            f'    <p><a href="{url_}" style="color:#e94560;text-decoration:none;font-weight:bold;">詳しく読む →</a></p>\n'
+            '  </div>\n'
+            '</div>\n'
+            '<!-- /wp:column -->'
+        )
         html_parts.append(card_html)
 
     html_parts.extend([
