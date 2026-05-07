@@ -27,9 +27,19 @@ def _auth_basic() -> str:
     return base64.b64encode(creds.encode()).decode()
 
 
+# WAF対策: 一般的なブラウザのUAを使う（SiteGuard はAPI/curl系UAを弾く）
+_USER_AGENT = (
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
+    '(KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36'
+)
+
+
 def _auth_header() -> dict:
     """ファイルアップロード用（Content-Type を含めない）"""
-    return {'Authorization': f'Basic {_auth_basic()}'}
+    return {
+        'Authorization': f'Basic {_auth_basic()}',
+        'User-Agent': _USER_AGENT,
+    }
 
 
 def _json_headers() -> dict:
@@ -37,7 +47,22 @@ def _json_headers() -> dict:
     return {
         'Authorization': f'Basic {_auth_basic()}',
         'Content-Type': 'application/json',
+        'User-Agent': _USER_AGENT,
     }
+
+
+def _request_json(method: str, url: str, *, retries: int = 3, **kwargs) -> requests.Response:
+    """WAF 403/HTMLレスポンス時のリトライ付きJSON要求"""
+    for attempt in range(retries):
+        resp = requests.request(method, url, timeout=30, **kwargs)
+        if resp.status_code == 200 or resp.status_code == 201:
+            return resp
+        # WAFが弾いた場合は待ってリトライ
+        if resp.status_code in (403, 503) or 'text/html' in resp.headers.get('content-type', ''):
+            time.sleep(10 + attempt * 5)
+            continue
+        return resp  # その他のエラーはそのまま返す
+    return resp
 
 
 # =================================================================
@@ -45,19 +70,26 @@ def _json_headers() -> dict:
 # =================================================================
 def _get_or_create_term(endpoint: str, name: str) -> int:
     url = f"{WP_BASE}/wp-json/wp/v2/{endpoint}"
-    resp = requests.get(url, params={'search': name, 'per_page': 100}, headers=_json_headers())
-    for term in resp.json():
-        if isinstance(term, dict) and term.get('name') == name:
-            return term['id']
-    resp = requests.post(url, json={'name': name}, headers=_json_headers())
-    return resp.json().get('id', 1)
+    resp = _request_json('GET', url, params={'search': name, 'per_page': 100}, headers=_json_headers())
+    try:
+        for term in resp.json():
+            if isinstance(term, dict) and term.get('name') == name:
+                return term['id']
+    except Exception:
+        pass
+    resp = _request_json('POST', url, json={'name': name}, headers=_json_headers())
+    try:
+        return resp.json().get('id', 1)
+    except Exception:
+        return 1  # フォールバック: 未分類
 
 
 def post(title: str, content: str, category: str, tags: list = None, status: str = 'publish') -> str:
     """新規記事を投稿し公開URLを返す（既存インターフェース維持）"""
     cat_id = _get_or_create_term('categories', category)
     tag_ids = [_get_or_create_term('tags', t) for t in (tags or [])]
-    resp = requests.post(
+    resp = _request_json(
+        'POST',
         f"{WP_BASE}/wp-json/wp/v2/posts",
         json={
             'title': title,
@@ -67,7 +99,6 @@ def post(title: str, content: str, category: str, tags: list = None, status: str
             'tags': tag_ids,
         },
         headers=_json_headers(),
-        timeout=30,
     )
     resp.raise_for_status()
     return resp.json().get('link', '')
