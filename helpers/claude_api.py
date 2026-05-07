@@ -4,7 +4,7 @@ import re
 import requests
 from helpers.rakuten import affiliate_search_url
 
-GEMINI_URL = 'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent'
+GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
 
 
 def _call_gemini(prompt: str) -> str:
