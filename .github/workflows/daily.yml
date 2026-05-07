@@ -1,0 +1,47 @@
+name: 毎日の記事生成
+
+on:
+  schedule:
+    - cron: '0 1 * * *'   # 毎日 午前10時（JST = UTC+9）
+  workflow_dispatch:        # 管理画面から手動実行も可能
+
+concurrency:
+  group: daily-article
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  post-article:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: リポジトリを取得
+        uses: actions/checkout@v4
+
+      - name: Python 3.11 をセットアップ
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 必要なライブラリをインストール
+        run: pip install -r requirements.txt
+
+      - name: 記事を生成してWordPressに投稿
+        env:
+          RAKUTEN_APP_ID:      ${{ secrets.RAKUTEN_APP_ID }}
+          RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
+          CLAUDE_API_KEY:      ${{ secrets.CLAUDE_API_KEY }}
+          WP_URL:              ${{ secrets.WP_URL }}
+          WP_USER:             ${{ secrets.WP_USER }}
+          WP_PASSWORD:         ${{ secrets.WP_PASSWORD }}
+        run: python daily.py
+
+      - name: 状態ファイルをリポジトリに保存
+        run: |
+          git config user.name  "Bousai Bot"
+          git config user.email "bot@aoktik.online"
+          git add data/state.json
+          git diff --staged --quiet || git commit -m "chore: update topic index [skip ci]"
+          git push

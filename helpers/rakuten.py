@@ -1,0 +1,40 @@
+"""楽天市場 商品検索APIモジュール"""
+import os
+import requests
+
+RAKUTEN_API = 'https://app.rakuten.co.jp/services/api/IchibaItem/Search/20170706'
+
+
+def search(keyword: str, hits: int = 6) -> list:
+    """楽天市場で商品を検索し、商品情報のリストを返す"""
+    try:
+        resp = requests.get(RAKUTEN_API, params={
+            'applicationId': os.environ['RAKUTEN_APP_ID'],
+            'affiliateId':   os.environ['RAKUTEN_AFFILIATE_ID'],
+            'keyword':       keyword,
+            'hits':          hits,
+            'sort':          '-reviewCount',
+            'formatVersion': 2,
+            'imageFlag':     1,
+        }, timeout=30)
+        resp.raise_for_status()
+        items = resp.json().get('Items', [])
+    except Exception as e:
+        print(f'楽天API エラー: {e}')
+        return []
+
+    result = []
+    for item in items:
+        imgs = item.get('mediumImageUrls', [])
+        img_url = imgs[0]['imageUrl'].replace('?_ex=128x128', '?_ex=400x400') if imgs else ''
+        result.append({
+            'name':    item.get('itemName', '')[:80],
+            'price':   item.get('itemPrice', 0),
+            'url':     item.get('affiliateUrl') or item.get('itemUrl', ''),
+            'image':   img_url,
+            'shop':    item.get('shopName', ''),
+            'reviews': item.get('reviewCount', 0),
+            'rating':  item.get('reviewAverage', 0.0),
+            'desc':    item.get('itemCaption', '')[:200],
+        })
+    return result
