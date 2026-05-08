@@ -1,9 +1,11 @@
 name: 毎日の記事生成（下書き）
 
 on:
-  schedule:
-    - cron: '0 22 * * *'   # JST 7:00（UTC 22:00 前日）
-  workflow_dispatch:
+  # 日次実行は SiteGuard WAF が GitHub Actions IP をブロックするため無効化
+  # 自動実行は scripts/install_launchd.sh で macOS launchd を使用
+  # schedule:
+  #   - cron: '0 22 * * *'   # JST 7:00
+  workflow_dispatch:   # 手動実行のみ可能
 
 concurrency:
   group: daily-article

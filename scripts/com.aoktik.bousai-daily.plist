@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.aoktik.bousai-daily</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/python3</string>
+        <string>/Users/aokitaiki/bousai-blog/daily_enhanced.py</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/aokitaiki/bousai-blog</string>
+
+    <!-- 毎朝 7:00 に実行 -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>7</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <!-- Mac起動時に過去の実行が漏れていれば実行 -->
+    <key>RunAtLoad</key>
+    <false/>
+
+    <!-- ログを残す -->
+    <key>StandardOutPath</key>
+    <string>/Users/aokitaiki/bousai-blog/data/launchd-stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/aokitaiki/bousai-blog/data/launchd-stderr.log</string>
+</dict>
+</plist>

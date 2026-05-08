@@ -90,16 +90,47 @@ python3 scripts/upload_eyecatch.py 411 "非常食おすすめ10選" --subtitle "
 | stock | 513 | 備蓄する |
 | - | 520 | シーン別ガイド（ハブ） |
 
-## GitHub Actions
+## 日次自動化（macOS launchd）
 
-`.github/workflows/daily.yml` が毎日 JST 7:00 に `daily_enhanced.py` を起動し、下書き記事を自動生成。
+SiteGuard WAF が GitHub Actions IP を継続的にブロックするため、日次実行は **macOS launchd** を使用します。
 
-### 必要な Secrets
+### セットアップ
 
-リポジトリ Settings → Secrets and variables → Actions に登録：
+```bash
+bash scripts/install_launchd.sh
+```
 
+これで毎朝 **7:00** に `daily_enhanced.py` が実行され、`data/topic_templates.py` の ROTATION 順に下書き記事が WordPress に投稿されます（地震→台風→水害→停電→断水→火災のサイクル）。
+
+### 確認
+
+```bash
+# 状態確認
+launchctl list | grep bousai
+
+# 手動実行（テスト用）
+launchctl start com.aoktik.bousai-daily
+
+# ログ確認
+tail -f data/launchd-stdout.log
+```
+
+### 停止
+
+```bash
+bash scripts/uninstall_launchd.sh
+```
+
+### 新トピック追加
+
+`data/topic_templates.py` の `TEMPLATES` dict に1エントリを追加し、`ROTATION` 配列にキーを加えるだけ。
+
+### GitHub Actions（補助用・手動実行のみ）
+
+`.github/workflows/daily.yml` は手動実行（workflow_dispatch）のみ対応。SiteGuard で GitHub IP を許可すれば自動実行も可能。
+
+必要な Secrets（既登録）:
 - `WP_URL`, `WP_USER`, `WP_PASSWORD`
-- `GEMINI_API_KEY`（Gemini で記事生成する場合）
 - `RAKUTEN_AFFILIATE_ID`
 - `A8_PRIME_VIDEO_LINK`, `A8_PRIME_VIDEO_IMG`
 
